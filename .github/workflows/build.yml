@@ -41,53 +41,116 @@ jobs:
             -o build/default.metallib
           echo "Metal shaders compiled successfully"
 
-      - name: Compile Winkor Binary
+      - name: Build Box64 and Wine (if scripts exist)
+        run: |
+          echo "=== Building Box64 and Wine ==="
+          if [ -f "Scripts/build-box64.sh" ]; then
+            chmod +x Scripts/build-box64.sh
+            ./Scripts/build-box64.sh
+            echo "Box64 built"
+          fi
+          if [ -f "Scripts/build-wine.sh" ]; then
+            chmod +x Scripts/build-wine.sh
+            ./Scripts/build-wine.sh
+            echo "Wine built"
+          fi
+
+      - name: Compile Winkor App Bundle
         run: |
           echo "=== Compiling Winkor for iOS ARM64 ==="
-          mkdir -p build/Release-iphoneos
+          mkdir -p build/Release-iphoneos/Winkor.app
 
           # Collect all Swift source files
           SWIFT_FILES=$(find WinkorApp -name "*.swift" | tr '\n' ' ')
           echo "Swift files: $SWIFT_FILES"
 
-          swiftc \
-            -o build/Release-iphoneos/Winkor \
-            -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-            -target arm64-apple-ios16.0 \
-            -O \
-            -framework Foundation \
-            -framework UIKit \
-            -framework SwiftUI \
-            -framework MetalKit \
-            -framework Metal \
-            -framework CoreGraphics \
-            -framework CoreImage \
-            -framework UniformTypeIdentifiers \
-            -framework MobileCoreServices \
-            $SWIFT_FILES
+          # Build as proper iOS app
+          xcodebuild -project Winkor.xcodeproj \
+            -scheme Winkor \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Winkor.xcarchive \
+            archive || echo "Xcode project not found, using swiftc fallback"
 
-          echo "Binary compiled successfully"
-          file build/Release-iphoneos/Winkor
+          # Fallback: compile with swiftc if no Xcode project
+          if [ ! -d "build/Winkor.xcarchive" ]; then
+            echo "Using swiftc fallback compilation..."
+            swiftc \
+              -o build/Release-iphoneos/Winkor.app/Winkor \
+              -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
+              -target arm64-apple-ios16.0 \
+              -O \
+              -framework Foundation \
+              -framework UIKit \
+              -framework SwiftUI \
+              -framework MetalKit \
+              -framework Metal \
+              -framework CoreGraphics \
+              -framework CoreImage \
+              -framework UniformTypeIdentifiers \
+              -framework MobileCoreServices \
+              $SWIFT_FILES
+            chmod 755 build/Release-iphoneos/Winkor.app/Winkor
+          fi
+
+          echo "App compiled successfully"
+          file build/Release-iphoneos/Winkor.app/Winkor 2>/dev/null || file build/Winkor.xcarchive/Products/Applications/Winkor.app/Winkor 2>/dev/null || echo "Binary not found"
 
       - name: Create IPA Package
         run: |
           echo "=== Packaging Winkor.ipa ==="
           
-          # Create .app bundle structure
-          mkdir -p Payload/Winkor.app
+          # Use built app from Xcode or fallback
+          if [ -d "build/Winkor.xcarchive/Products/Applications/Winkor.app" ]; then
+            echo "Using Xcode-built app..."
+            cp -R build/Winkor.xcarchive/Products/Applications/Winkor.app Payload/
+          else
+            echo "Using swiftc-built app..."
+            # Create .app bundle structure
+            mkdir -p Payload/Winkor.app
+            
+            # Copy binary
+            cp build/Release-iphoneos/Winkor.app/Winkor Payload/Winkor.app/Winkor
+            chmod 755 Payload/Winkor.app/Winkor
+            
+            # Copy Metal shaders
+            cp build/default.metallib Payload/Winkor.app/default.metallib
+            
+            # Copy Info.plist
+            cp WinkorApp/Info.plist Payload/Winkor.app/Info.plist
+            
+            # Create PkgInfo
+            echo -n "APPL????" > Payload/Winkor.app/PkgInfo
+          fi
           
-          # Copy binary
-          cp build/Release-iphoneos/Winkor Payload/Winkor.app/Winkor
-          chmod 755 Payload/Winkor.app/Winkor
+          # Include Box64/Wine binaries if they exist
+          if [ -f "build/box64" ]; then
+            echo "Including Box64 binary..."
+            cp build/box64 Payload/Winkor.app/box64
+            chmod 755 Payload/Winkor.app/box64
+          fi
           
-          # Copy Metal shaders
-          cp build/default.metallib Payload/Winkor.app/default.metallib
+          if [ -f "build/wine64" ]; then
+            echo "Including Wine binary..."
+            cp build/wine64 Payload/Winkor.app/wine64
+            chmod 755 Payload/Winkor.app/wine64
+          fi
           
-          # Copy Info.plist
-          cp WinkorApp/Info.plist Payload/Winkor.app/Info.plist
+          # Include Mesa/VirGL/MoltenVK if built
+          if [ -d "build/drivers" ]; then
+            echo "Including graphics drivers..."
+            cp -R build/drivers Payload/Winkor.app/
+          fi
           
-          # Create PkgInfo
-          echo -n "APPL????" > Payload/Winkor.app/PkgInfo
+          # Show app bundle size
+          echo ""
+          echo "=== App Bundle Size ==="
+          du -sh Payload/Winkor.app/
+          echo ""
+          echo "=== Binary Size ==="
+          ls -lh Payload/Winkor.app/Winkor 2>/dev/null || echo "Main binary not found"
+          ls -lh Payload/Winkor.app/box64 2>/dev/null || echo "Box64 not included"
+          ls -lh Payload/Winkor.app/wine64 2>/dev/null || echo "Wine not included"
           
           # Create entitlements for JIT support
           cat > Payload/Winkor.app/Winkor.entitlements << 'ENTITLEMENTS'
@@ -123,12 +186,25 @@ jobs:
           path: Winkor.ipa
           retention-days: 90
 
-      - name: Upload Debug Binary
+      - name: Upload Debug App Bundle
         uses: actions/upload-artifact@v4
         with:
-          name: Winkor-Binary
-          path: build/Release-iphoneos/Winkor
+          name: Winkor-AppBundle
+          path: |
+            Payload/Winkor.app
+            build/Release-iphoneos/Winkor.app
+            build/Winkor.xcarchive/Products/Applications/Winkor.app
           retention-days: 30
+          
+      - name: Upload Build Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build-Logs
+          path: |
+            build/*.log
+            build/*.txt
+          retention-days: 7
 
       - name: Build Summary
         run: |
