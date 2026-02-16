@@ -104,13 +104,25 @@ class DriverManager: ObservableObject {
         return [
             // GPU Drivers
             GraphicsDriver(
+                id: "mesa",
+                name: "Mesa (OpenGL/Vulkan)",
+                category: .gpu,
+                version: "24.0.8",
+                description: "Mesa 3D Graphics Library - includes Turnip (Vulkan) and VirGL (OpenGL) drivers. Core graphics stack required for most games.",
+                downloadURL: "https://archive.mesa3d.org/mesa-24.0.8.tar.xz",
+                sizeMB: 18,
+                isRequired: true,
+                isInstalled: false,
+                installPath: driversDir.appendingPathComponent("mesa").path
+            ),
+            GraphicsDriver(
                 id: "turnip",
                 name: "Turnip (Adreno Vulkan)",
                 category: .gpu,
-                version: "24.0.0",
-                description: "Mesa Turnip Vulkan driver - provides native Vulkan support. Best performance for modern games.",
-                downloadURL: "https://github.com/nicknsy/winlator/releases/download/v7.1/turnip_24.0.0.tar.gz",
-                sizeMB: 45,
+                version: "24.0.8",
+                description: "Mesa Turnip Vulkan driver - best performance for modern games. Included with Mesa, auto-built from Mesa source.",
+                downloadURL: "bundled",
+                sizeMB: 0,
                 isRequired: false,
                 isInstalled: false,
                 installPath: driversDir.appendingPathComponent("turnip").path
@@ -119,25 +131,13 @@ class DriverManager: ObservableObject {
                 id: "virgl",
                 name: "VirGL (OpenGL)",
                 category: .opengl,
-                version: "1.0.0",
-                description: "VirGL OpenGL renderer - translates OpenGL calls to Metal. Good for older OpenGL games.",
-                downloadURL: "https://github.com/nicknsy/winlator/releases/download/v7.1/virgl_1.0.tar.gz",
-                sizeMB: 32,
+                version: "24.0.8",
+                description: "VirGL OpenGL-to-Metal renderer for older OpenGL games. Included with Mesa, auto-built from Mesa source.",
+                downloadURL: "bundled",
+                sizeMB: 0,
                 isRequired: false,
                 isInstalled: false,
                 installPath: driversDir.appendingPathComponent("virgl").path
-            ),
-            GraphicsDriver(
-                id: "mesa",
-                name: "Mesa (OpenGL/Vulkan)",
-                category: .gpu,
-                version: "24.0.0",
-                description: "Mesa 3D Graphics Library - core graphics stack. Required for most games.",
-                downloadURL: "https://github.com/nicknsy/winlator/releases/download/v7.1/mesa_24.0.0.tar.gz",
-                sizeMB: 85,
-                isRequired: true,
-                isInstalled: false,
-                installPath: driversDir.appendingPathComponent("mesa").path
             ),
             
             // DX Wrappers
@@ -171,7 +171,7 @@ class DriverManager: ObservableObject {
                 category: .dxWrapper,
                 version: "1.0",
                 description: "DirectX 8 to Vulkan. For very old DirectX 8 games.",
-                downloadURL: "https://github.com/AlpyneDreams/d8vk/releases/download/d8vk-v1.0/d8vk-v1.0.tar.gz",
+                downloadURL: "https://github.com/AlpyneDreams/d8vk/releases/download/d8vk-v1.0/d8vk-1.0.tar.gz",
                 sizeMB: 12,
                 isRequired: false,
                 isInstalled: false,
@@ -197,7 +197,7 @@ class DriverManager: ObservableObject {
                 category: .vulkan,
                 version: "1.2.9",
                 description: "Vulkan to Metal translation layer by Khronos. Core component for all Vulkan rendering on iOS.",
-                downloadURL: "https://github.com/KhronosGroup/MoltenVK/releases/download/v1.2.9/MoltenVK-all.tar",
+                downloadURL: "https://github.com/nicknsy/moltenvk-ios/releases/download/v1.2.8/MoltenVK-ios-arm64.tar.gz",
                 sizeMB: 22,
                 isRequired: true,
                 isInstalled: false,
