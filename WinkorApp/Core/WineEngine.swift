@@ -199,27 +199,14 @@ class WineEngine {
                 argv = [winePath, exePath] + arguments
                 onOutput("[Winkor] Using Wine only (no Box64)")
             } else {
-                // Neither exists — use Swift Box64 stub
-                onOutput("[Winkor] C binaries not found, using Swift Box64 stub")
-                onOutput("[Winkor] This provides basic emulation without complex C compilation")
-                
-                // Use Swift Box64 directly
-                DispatchQueue.global(qos: .userInitiated).async {
-                    let pid = Box64Swift.shared.execute(winePath: winePath, exePath: exePath, arguments: arguments)
-                    
-                    DispatchQueue.main.async {
-                        onOutput("[Winkor] Swift Box64 started (PID: \(pid))")
-                        
-                        // Simulate process running
-                        DispatchQueue.global(qos: .userInitiated).async {
-                            while Box64Swift.shared.isProcessRunning(pid) {
-                                Thread.sleep(forTimeInterval: 0.1)
-                            }
-                            DispatchQueue.main.async {
-                                onExit(0)
-                            }
-                        }
-                    }
+                // Neither exists — report error
+                DispatchQueue.main.async {
+                    onOutput("[Error] Wine binary not found.")
+                    onOutput("[Error] Wine path: \(winePath)")
+                    onOutput("[Error] Box64 path: \(box64Path)")
+                    onOutput("[Winkor] To fix: build Wine using Scripts/build-wine-ios.sh")
+                    onOutput("[Winkor] Or download Wine from Settings → Install Components.")
+                    onExit(1)
                 }
                 return
             }

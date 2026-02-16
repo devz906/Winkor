@@ -53,9 +53,9 @@ jobs:
             echo "Box64 build script not found"
           fi
           
-          if [ -f "Scripts/build-wine.sh" ]; then
-            chmod +x Scripts/build-wine.sh
-            ./Scripts/build-wine.sh || echo "Wine C build failed, using Swift stub"
+          if [ -f "Scripts/build-wine-ios.sh" ]; then
+            chmod +x Scripts/build-wine-ios.sh
+            ./Scripts/build-wine-ios.sh || echo "Wine C build failed"
           else
             echo "Wine build script not found"
           fi

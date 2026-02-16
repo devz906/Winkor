@@ -139,8 +139,8 @@ class Box64Bridge {
     }
     
     func isInstalled() -> Bool {
-        // Check for C binary first, then fall back to Swift implementation
-        return fileManager.fileExists(atPath: box64BinaryPath) || true // Swift stub always available
+        // Only return true if real Box64 binary exists
+        return fileManager.fileExists(atPath: box64BinaryPath)
     }
     
     // Check if Box64 is available as a dynamic library (preferred on iOS)
@@ -189,15 +189,10 @@ class Box64Bridge {
     }
     
     func buildCommandLine(wineBinary: String, exePath: String, args: [String] = []) -> [String] {
-        // If C binary exists, use it; otherwise use Swift stub
-        if fileManager.fileExists(atPath: box64BinaryPath) {
-            var cmd = [box64BinaryPath, wineBinary, exePath]
-            cmd.append(contentsOf: args)
-            return cmd
-        } else {
-            // Swift stub doesn't need command line, it handles everything internally
-            return [exePath] + args
-        }
+        // Build command line for real Box64 binary
+        var cmd = [box64BinaryPath, wineBinary, exePath]
+        cmd.append(contentsOf: args)
+        return cmd
     }
     
     // Prepare the Box64 dynarec cache directory for faster subsequent launches
