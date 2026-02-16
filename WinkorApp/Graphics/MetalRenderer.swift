@@ -229,11 +229,26 @@ class MetalRenderer: NSObject, MTKViewDelegate, ObservableObject {
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
             encoder.endEncoding()
         } else {
-            // Clear to dark blue (Windows-style)
-            descriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 0.3, alpha: 1.0)
-            if let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) {
-                encoder.endEncoding()
+            // No framebuffer - render a test pattern to show Metal is working
+            guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor),
+                  let pipelineState = pipelineState else { return }
+            
+            encoder.setRenderPipelineState(pipelineState)
+            encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+            
+            // Create a simple test pattern texture
+            let testTexture = createTestTexture()
+            encoder.setFragmentTexture(testTexture, index: 0)
+            
+            let samplerDesc = MTLSamplerDescriptor()
+            samplerDesc.minFilter = .linear
+            samplerDesc.magFilter = .linear
+            if let sampler = device.makeSamplerState(descriptor: samplerDesc) {
+                encoder.setFragmentSamplerState(sampler, index: 0)
             }
+            
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
+            encoder.endEncoding()
         }
         
         commandBuffer.present(drawable)
@@ -250,6 +265,50 @@ class MetalRenderer: NSObject, MTKViewDelegate, ObservableObject {
             lastFPSTime = now
             onFrameRendered?(currentFPS, frameTime)
         }
+    }
+    
+    // MARK: - Test Pattern
+    
+    private func createTestTexture() -> MTLTexture {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: 256,
+            height: 256,
+            mipmapped: false
+        )
+        descriptor.usage = .shaderRead
+        
+        guard let texture = device.makeTexture(descriptor: descriptor) else {
+            fatalError("Failed to create test texture")
+        }
+        
+        // Create a colorful test pattern
+        var pixels: [UInt32] = []
+        for y in 0..<256 {
+            for x in 0..<256 {
+                let r = UInt32((x * 255) / 256)
+                let g = UInt32((y * 255) / 256)
+                let b = UInt32(128)
+                let a: UInt32 = 255
+                pixels.append((a << 24) | (r << 16) | (g << 8) | b)
+            }
+        }
+        
+        let region = MTLRegion(
+            origin: MTLOrigin(x: 0, y: 0, z: 0),
+            size: MTLSize(width: 256, height: 256, depth: 1)
+        )
+        
+        pixels.withUnsafeBufferPointer { buffer in
+            texture.replace(
+                region: region,
+                mipmapLevel: 0,
+                withBytes: buffer.baseAddress!,
+                bytesPerRow: 256 * 4
+            )
+        }
+        
+        return texture
     }
     
     // MARK: - Public
