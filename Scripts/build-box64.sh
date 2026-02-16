@@ -41,7 +41,7 @@ cmake .. \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=$IOS_MIN_VERSION \
     -DCMAKE_OSX_SYSROOT=$IOS_SDK \
     -DCMAKE_C_COMPILER=$(xcrun --sdk iphoneos --find clang) \
-    -DCMAKE_C_FLAGS="-arch $ARCH -isysroot $IOS_SDK -miphoneos-version-min=$IOS_MIN_VERSION -DNOELF=1 -DMALLOC_PROBLEM=1" \
+    -DCMAKE_C_FLAGS="-arch $ARCH -isysroot $IOS_SDK -miphoneos-version-min=$IOS_MIN_VERSION -I$SCRIPT_DIR -D_ISOC99_SOURCE=1" \
     -DARM_DYNAREC=ON \
     -DIOS=ON \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -64,7 +64,7 @@ make -j$(sysctl -n hw.ncpu) || {
         -DCMAKE_OSX_DEPLOYMENT_TARGET=$IOS_MIN_VERSION \
         -DCMAKE_OSX_SYSROOT=$IOS_SDK \
         -DCMAKE_C_COMPILER=$(xcrun --sdk iphoneos --find clang) \
-        -DCMAKE_C_FLAGS="-arch $ARCH -isysroot $IOS_SDK -miphoneos-version-min=$IOS_MIN_VERSION -DNOELF=1 -DMALLOC_PROBLEM=1 -DNOEXEC=1" \
+        -DCMAKE_C_FLAGS="-arch $ARCH -isysroot $IOS_SDK -miphoneos-version-min=$IOS_MIN_VERSION -I$SCRIPT_DIR -DNOEXEC=1 -D_ISOC99_SOURCE=1" \
         -DARM_DYNAREC=OFF \
         -DIOS=ON \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
