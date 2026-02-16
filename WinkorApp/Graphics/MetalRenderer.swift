@@ -231,9 +231,9 @@ class MetalRenderer: NSObject, MTKViewDelegate, ObservableObject {
         } else {
             // No framebuffer - render a test pattern to show Metal is working
             guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor),
-                  let pipelineState = pipelineState else { return }
+                  let pipeline = pipelineState else { return }
             
-            encoder.setRenderPipelineState(pipelineState)
+            encoder.setRenderPipelineState(pipeline)
             encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
             
             // Create a simple test pattern texture
