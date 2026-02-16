@@ -80,6 +80,52 @@ jobs:
           # Fallback: compile with swiftc if no Xcode project
           if [ ! -d "build/Winkor.xcarchive" ]; then
             echo "Using swiftc fallback compilation..."
+            
+            # Create Info.plist for iOS app
+            cat > build/Release-iphoneos/Winkor.app/Info.plist << 'PLIST'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>CFBundleDisplayName</key>
+                <string>Winkor</string>
+                <key>CFBundleExecutable</key>
+                <string>Winkor</string>
+                <key>CFBundleIdentifier</key>
+                <string>com.winkor.app</string>
+                <key>CFBundleInfoDictionaryVersion</key>
+                <string>6.0</string>
+                <key>CFBundleName</key>
+                <string>Winkor</string>
+                <key>CFBundlePackageType</key>
+                <string>APPL</string>
+                <key>CFBundleShortVersionString</key>
+                <string>1.0</string>
+                <key>CFBundleVersion</key>
+                <string>1</string>
+                <key>LSRequiresIPhoneOS</key>
+                <true/>
+                <key>MinimumOSVersion</key>
+                <string>16.0</string>
+                <key>UILaunchScreen</key>
+                <dict/>
+                <key>UIRequiredDeviceCapabilities</key>
+                <array>
+                    <string>armv7</string>
+                </array>
+                <key>UISupportedInterfaceOrientations</key>
+                <array>
+                    <string>UIInterfaceOrientationPortrait</string>
+                    <string>UIInterfaceOrientationLandscapeLeft</string>
+                    <string>UIInterfaceOrientationLandscapeRight</string>
+                </array>
+                <key>UIStatusBarStyle</key>
+                <string>UIStatusBarStyleDefault</string>
+            </dict>
+            </plist>
+            PLIST
+            
+            # Compile Swift files
             swiftc \
               -o build/Release-iphoneos/Winkor.app/Winkor \
               -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
@@ -184,6 +230,29 @@ jobs:
           </plist>
           ENTITLEMENTS
           
+          # Code sign the app (required for proper IPA)
+          echo "=== Code signing app ==="
+          if [ -n "$APPLE_CERT" ] && [ -n "$APPLE_KEY" ]; then
+            echo "Using provided certificates for signing"
+            # Create keychain and import certificates
+            security create-keychain -p "" build.keychain
+            security default-keychain -s build.keychain
+            security unlock-keychain -p "" build.keychain
+            echo "$APPLE_CERT" | base64 -d > /tmp/certificate.p12
+            security import /tmp/certificate.p12 -k build.keychain -P "" -T /usr/bin/codesign
+            security import /tmp/certificate.p12 -k build.keychain -P "" -T /usr/bin/codesign
+            
+            # Sign the app
+            codesign --force --sign "Apple Distribution" --entitlements Payload/Winkor.app/Winkor.entitlements Payload/Winkor.app
+          else
+            echo "No certificates provided, creating ad-hoc signed IPA"
+            # Create ad-hoc signature for jailbreak/sideload
+            codesign --force --sign "-" --entitlements Payload/Winkor.app/Winkor.entitlements Payload/Winkor.app
+          fi
+          
+          # Verify signature
+          codesign -dv Payload/Winkor.app
+          
           # Create the IPA (zip of Payload/)
           zip -qry Winkor.ipa Payload
           
@@ -191,7 +260,10 @@ jobs:
           ls -la Winkor.ipa
           echo ""
           echo "Contents:"
-          unzip -l Winkor.ipa
+          unzip -l Winkor.ipa | head -20
+          echo ""
+          echo "=== IPA Info ==="
+          unzip -p Winkor.ipa "Payload/Winkor.app/Info.plist" | plutil -p -
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
