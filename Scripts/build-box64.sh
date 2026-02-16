@@ -41,17 +41,42 @@ cmake .. \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=$IOS_MIN_VERSION \
     -DCMAKE_OSX_SYSROOT=$IOS_SDK \
     -DCMAKE_C_COMPILER=$(xcrun --sdk iphoneos --find clang) \
-    -DCMAKE_C_FLAGS="-arch $ARCH -isysroot $IOS_SDK -miphoneos-version-min=$IOS_MIN_VERSION" \
+    -DCMAKE_C_FLAGS="-arch $ARCH -isysroot $IOS_SDK -miphoneos-version-min=$IOS_MIN_VERSION -DNOELF=1 -DMALLOC_PROBLEM=1" \
     -DARM_DYNAREC=ON \
     -DIOS=ON \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_INSTALL_PREFIX="$OUTPUT_DIR" \
     -DBUILD_SHARED_LIBS=OFF \
-    -DCMAKE_MACOSX_BUNDLE=OFF
+    -DCMAKE_MACOSX_BUNDLE=OFF \
+    -DNOALIGN=ON \
+    -DNOGDB=ON \
+    -DNOFILEMON=ON \
+    -DNOGLES=ON
 
 # Build
 echo "Building Box64..."
-make -j$(sysctl -n hw.ncpu)
+make -j$(sysctl -n hw.ncpu) || {
+    echo "Dynarec build failed, trying interpreter-only build..."
+    make clean
+    cmake .. \
+        -DCMAKE_SYSTEM_NAME=iOS \
+        -DCMAKE_OSX_ARCHITECTURES=$ARCH \
+        -DCMAKE_OSX_DEPLOYMENT_TARGET=$IOS_MIN_VERSION \
+        -DCMAKE_OSX_SYSROOT=$IOS_SDK \
+        -DCMAKE_C_COMPILER=$(xcrun --sdk iphoneos --find clang) \
+        -DCMAKE_C_FLAGS="-arch $ARCH -isysroot $IOS_SDK -miphoneos-version-min=$IOS_MIN_VERSION -DNOELF=1 -DMALLOC_PROBLEM=1 -DNOEXEC=1" \
+        -DARM_DYNAREC=OFF \
+        -DIOS=ON \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_INSTALL_PREFIX="$OUTPUT_DIR" \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DCMAKE_MACOSX_BUNDLE=OFF \
+        -DNOALIGN=ON \
+        -DNOGDB=ON \
+        -DNOFILEMON=ON \
+        -DNOGLES=ON
+    make -j$(sysctl -n hw.ncpu)
+}
 
 # Install (manual copy since CMake install fails)
 echo "Installing Box64..."
