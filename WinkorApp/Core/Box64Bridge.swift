@@ -108,18 +108,51 @@ class Box64Bridge {
     private let fileManager = FileManager.default
     var config = Box64Config()
     
+    // Search order: app bundle Frameworks → Documents directory
     var box64BinaryPath: String {
+        // 1. Check app bundle (built by build-box64.sh, embedded in IPA)
+        if let bundlePath = Bundle.main.path(forResource: "box64", ofType: nil) {
+            return bundlePath
+        }
+        if let frameworkPath = Bundle.main.privateFrameworksPath {
+            let p = (frameworkPath as NSString).appendingPathComponent("box64")
+            if fileManager.fileExists(atPath: p) { return p }
+        }
+        // 2. Fall back to Documents (manual download)
         let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
         return docs.appendingPathComponent("box64/box64").path
     }
     
     var box64LibPath: String {
+        // 1. Check app bundle
+        if let frameworkPath = Bundle.main.privateFrameworksPath {
+            let p = (frameworkPath as NSString).appendingPathComponent("box64-lib")
+            if fileManager.fileExists(atPath: p) { return p }
+        }
+        if let resPath = Bundle.main.resourcePath {
+            let p = (resPath as NSString).appendingPathComponent("box64-lib")
+            if fileManager.fileExists(atPath: p) { return p }
+        }
+        // 2. Fall back to Documents
         let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
         return docs.appendingPathComponent("box64/lib").path
     }
     
     func isInstalled() -> Bool {
         return fileManager.fileExists(atPath: box64BinaryPath)
+    }
+    
+    // Check if Box64 is available as a dynamic library (preferred on iOS)
+    var box64DylibPath: String? {
+        // Check app bundle for libbox64.dylib
+        if let frameworkPath = Bundle.main.privateFrameworksPath {
+            let p = (frameworkPath as NSString).appendingPathComponent("libbox64.dylib")
+            if fileManager.fileExists(atPath: p) { return p }
+        }
+        let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let p = docs.appendingPathComponent("box64/libbox64.dylib").path
+        if fileManager.fileExists(atPath: p) { return p }
+        return nil
     }
     
     func setupEnvironment(for container: WineContainer) -> [String: String] {

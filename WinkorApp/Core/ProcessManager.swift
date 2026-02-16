@@ -39,6 +39,14 @@ class ProcessManager: ObservableObject {
             DispatchQueue.main.async {
                 self?.outputLog.append(message)
                 onOutput(message)
+                // Parse FPS from output lines like "[Wine] frame 60 | 45 fps"
+                if message.contains("fps") {
+                    let parts = message.components(separatedBy: " ")
+                    if let fpsIdx = parts.firstIndex(of: "fps"), fpsIdx > 0,
+                       let fpsVal = Int(parts[fpsIdx - 1]) {
+                        self?.fps = fpsVal
+                    }
+                }
             }
         }
         

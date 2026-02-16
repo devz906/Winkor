@@ -191,43 +191,64 @@ struct DesktopView: View {
             .frame(height: 28)
             .background(Color(red: 0.2, green: 0.2, blue: 0.25))
             
-            // App content area (framebuffer / rendering surface)
+            // App content area — live output from Wine/Box64 process
             ZStack {
-                // Framebuffer placeholder - where Metal would render the actual app output
                 Color(red: 0.05, green: 0.05, blue: 0.08)
                 
-                VStack(spacing: 16) {
-                    if processManager.isRunning {
-                        // Show app is rendering
-                        Image(systemName: "play.display")
-                            .font(.system(size: 48))
-                            .foregroundColor(.white.opacity(0.3))
-                        
-                        Text(processManager.currentProcessName)
-                            .font(.headline)
-                            .foregroundColor(.white.opacity(0.6))
-                        
-                        Text("PID: \(processManager.outputLog.last(where: { $0.contains("PID") }) ?? "running")")
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.3))
-                        
-                        HStack(spacing: 20) {
+                if processManager.isRunning {
+                    // Live process output (scrolling console inside app window)
+                    VStack(spacing: 0) {
+                        // Status bar
+                        HStack {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 6, height: 6)
+                            Text(processManager.currentProcessName)
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.5))
+                            Spacer()
                             Text("\(processManager.fps) FPS")
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(.green.opacity(0.7))
-                            
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundColor(.green.opacity(0.8))
                             Text(container.screenResolution)
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.4))
-                            
-                            Text(container.graphicsDriver)
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(.orange.opacity(0.6))
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.3))
                         }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.white.opacity(0.05))
                         
-                        Text("Wine + Box64 rendering via Metal")
-                            .font(.caption2)
+                        // Scrolling output log
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                LazyVStack(alignment: .leading, spacing: 1) {
+                                    ForEach(Array(consoleOutput.enumerated()), id: \.offset) { index, line in
+                                        Text(line)
+                                            .font(.system(.caption2, design: .monospaced))
+                                            .foregroundColor(lineColor(for: line))
+                                            .id(index)
+                                    }
+                                }
+                                .padding(8)
+                            }
+                            .onChange(of: consoleOutput.count) { _ in
+                                if let last = consoleOutput.indices.last {
+                                    withAnimation(.none) {
+                                        proxy.scrollTo(last, anchor: .bottom)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Not running yet
+                    VStack(spacing: 12) {
+                        Image(systemName: "desktopcomputer")
+                            .font(.system(size: 40))
                             .foregroundColor(.white.opacity(0.2))
+                        Text("Launch an EXE to start")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.3))
                     }
                 }
             }

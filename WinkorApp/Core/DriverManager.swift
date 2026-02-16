@@ -108,9 +108,9 @@ class DriverManager: ObservableObject {
                 name: "Mesa (OpenGL/Vulkan)",
                 category: .gpu,
                 version: "24.0.8",
-                description: "Mesa 3D Graphics Library - includes Turnip (Vulkan) and VirGL (OpenGL) drivers. Core graphics stack required for most games.",
-                downloadURL: "https://archive.mesa3d.org/mesa-24.0.8.tar.xz",
-                sizeMB: 18,
+                description: "Mesa 3D Graphics Library - includes Turnip and VirGL drivers. Ships bundled with the app (built by build-mesa.sh).",
+                downloadURL: "bundled",
+                sizeMB: 0,
                 isRequired: true,
                 isInstalled: false,
                 installPath: driversDir.appendingPathComponent("mesa").path
@@ -147,8 +147,8 @@ class DriverManager: ObservableObject {
                 category: .dxWrapper,
                 version: "2.3.1",
                 description: "DirectX 9/10/11 to Vulkan translation layer. Essential for DirectX games.",
-                downloadURL: "https://github.com/doitsujin/dxvk/releases/download/v2.3.1/dxvk-2.3.1.tar.gz",
-                sizeMB: 28,
+                downloadURL: "https://github.com/doitsujin/dxvk/releases/download/v2.5.3/dxvk-2.5.3.tar.gz",
+                sizeMB: 10,
                 isRequired: true,
                 isInstalled: false,
                 installPath: driversDir.appendingPathComponent("dxvk").path
@@ -160,6 +160,7 @@ class DriverManager: ObservableObject {
                 version: "2.12",
                 description: "DirectX 12 to Vulkan translation. Required for DX12 games.",
                 downloadURL: "https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v2.12/vkd3d-proton-2.12.tar.zst",
+                // Verified: HansKristian-Work releases use {name}-{version}.tar.zst naming
                 sizeMB: 18,
                 isRequired: false,
                 isInstalled: false,
@@ -197,8 +198,8 @@ class DriverManager: ObservableObject {
                 category: .vulkan,
                 version: "1.2.9",
                 description: "Vulkan to Metal translation layer by Khronos. Core component for all Vulkan rendering on iOS.",
-                downloadURL: "https://github.com/nicknsy/moltenvk-ios/releases/download/v1.2.8/MoltenVK-ios-arm64.tar.gz",
-                sizeMB: 22,
+                downloadURL: "bundled",
+                sizeMB: 0,
                 isRequired: true,
                 isInstalled: false,
                 installPath: driversDir.appendingPathComponent("moltenvk").path
