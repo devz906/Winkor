@@ -120,9 +120,9 @@ class DriverManager: ObservableObject {
                 name: "Turnip (Adreno Vulkan)",
                 category: .gpu,
                 version: "24.0.8",
-                description: "Mesa Turnip Vulkan driver - best performance for modern games. Included with Mesa, auto-built from Mesa source.",
+                description: "Mesa Turnip Vulkan driver - best performance for modern. Included with Mesa, auto-built from Mesa source.",
                 downloadURL: "bundled",
-                sizeMB: 0,
+                sizeMB: 8,
                 isRequired: false,
                 isInstalled: false,
                 installPath: driversDir.appendingPathComponent("turnip").path
@@ -130,11 +130,11 @@ class DriverManager: ObservableObject {
             GraphicsDriver(
                 id: "virgl",
                 name: "VirGL (OpenGL)",
-                category: .opengl,
+                category: .gpu,
                 version: "24.0.8",
-                description: "VirGL OpenGL-to-Metal renderer for older OpenGL games. Included with Mesa, auto-built from Mesa source.",
+                description: "Mesa VirGL OpenGL driver - best compatibility for older games. Included with Mesa, auto-built from Mesa source.",
                 downloadURL: "bundled",
-                sizeMB: 0,
+                sizeMB: 12,
                 isRequired: false,
                 isInstalled: false,
                 installPath: driversDir.appendingPathComponent("virgl").path

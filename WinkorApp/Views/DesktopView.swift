@@ -13,13 +13,12 @@ struct DesktopView: View {
     @StateObject private var processManager = ProcessManager()
     @State private var showingConsole = false
     @State private var showingAppWindow = true
-    @State private var showingFileImport = false
-    @State private var showingPEInfo = false
+    @State private var appWindowMaximized = false
+    @StateObject private var metalRenderer = MetalRenderer()
     @State private var consoleOutput: [String] = []
     @State private var selectedEXEForImport: URL?
     @State private var showingOnScreenControls = true
     @State private var peInfo = ""
-    @State private var appWindowMaximized = true
     
     var body: some View {
         VStack(spacing: 0) {
@@ -218,27 +217,17 @@ struct DesktopView: View {
                         .padding(.vertical, 4)
                         .background(Color.white.opacity(0.05))
                         
-                        // Scrolling output log
-                        ScrollViewReader { proxy in
-                            ScrollView {
-                                LazyVStack(alignment: .leading, spacing: 1) {
-                                    ForEach(Array(consoleOutput.enumerated()), id: \.offset) { index, line in
-                                        Text(line)
-                                            .font(.system(.caption2, design: .monospaced))
-                                            .foregroundColor(lineColor(for: line))
-                                            .id(index)
-                                    }
-                                }
-                                .padding(8)
-                            }
-                            .onChange(of: consoleOutput.count) { _ in
-                                if let last = consoleOutput.indices.last {
-                                    withAnimation(.none) {
-                                        proxy.scrollTo(last, anchor: .bottom)
-                                    }
+                        // Metal view for actual EXE rendering
+                        MetalViewRepresentable(renderer: metalRenderer)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .onAppear {
+                                let res = container.screenResolution.split(separator: "x")
+                                if res.count == 2 {
+                                    let w = Int(res[0]) ?? 1280
+                                    let h = Int(res[1]) ?? 720
+                                    metalRenderer.createFramebuffer(width: w, height: h)
                                 }
                             }
-                        }
                     }
                 } else {
                     // Not running yet
@@ -555,5 +544,34 @@ struct PEInfoView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Metal View Bridge
+
+struct MetalViewRepresentable: UIViewRepresentable {
+    let renderer: MetalRenderer
+    
+    func makeUIView(context: Context) -> MTKView {
+        let mtkView = MTKView()
+        mtkView.delegate = renderer
+        mtkView.preferredFramesPerSecond = 60
+        mtkView.enableSetNeedsDisplay = false
+        mtkView.isPaused = false
+        mtkView.clearColor = MTLClearColor(red: 0.05, green: 0.05, blue: 0.08, alpha: 1.0)
+        
+        // Set device
+        mtkView.device = renderer.getDevice()
+        
+        // Configure for framebuffer rendering
+        mtkView.framebufferOnly = false
+        mtkView.drawableSize = mtkView.frame.size
+        
+        print("[MetalView] Created with device: \(mtkView.device?.name ?? "unknown")")
+        return mtkView
+    }
+    
+    func updateUIView(_ uiView: MTKView, context: Context) {
+        // Update view if needed
     }
 }
