@@ -45,18 +45,38 @@ cmake .. \
     -DARM_DYNAREC=ON \
     -DIOS=ON \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-    -DCMAKE_INSTALL_PREFIX="$OUTPUT_DIR"
+    -DCMAKE_INSTALL_PREFIX="$OUTPUT_DIR" \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_MACOSX_BUNDLE=OFF
 
 # Build
 echo "Building Box64..."
 make -j$(sysctl -n hw.ncpu)
 
-# Install
+# Install (manual copy since CMake install fails)
 echo "Installing Box64..."
 mkdir -p "$OUTPUT_DIR/bin"
 mkdir -p "$OUTPUT_DIR/lib"
-cp box64 "$OUTPUT_DIR/bin/" 2>/dev/null || true
-cp -r ../x64lib/* "$OUTPUT_DIR/lib/" 2>/dev/null || true
+
+# Copy the main binary
+if [ -f "box64" ]; then
+    cp box64 "$OUTPUT_DIR/bin/"
+    echo "Copied box64 binary"
+else
+    echo "Error: box64 binary not found"
+    exit 1
+fi
+
+# Copy x64lib if exists
+if [ -d "../x64lib" ]; then
+    cp -r ../x64lib/* "$OUTPUT_DIR/lib/" 2>/dev/null || true
+    echo "Copied x64lib"
+fi
+
+# Strip the binary for smaller size
+if command -v lipo &> /dev/null; then
+    lipo -info "$OUTPUT_DIR/bin/box64" || true
+fi
 
 echo "=== Box64 build complete ==="
 echo "Binary: $OUTPUT_DIR/bin/box64"

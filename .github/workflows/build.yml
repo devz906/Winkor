@@ -124,16 +124,25 @@ jobs:
           fi
           
           # Include Box64/Wine binaries if they exist
-          if [ -f "build/box64" ]; then
+          if [ -f "build/output/box64/bin/box64" ]; then
             echo "Including Box64 binary..."
-            cp build/box64 Payload/Winkor.app/box64
+            cp build/output/box64/bin/box64 Payload/Winkor.app/box64
             chmod 755 Payload/Winkor.app/box64
+            echo "Box64 size: $(ls -lh Payload/Winkor.app/box64 | awk '{print $5}')"
           fi
           
-          if [ -f "build/wine64" ]; then
+          if [ -f "build/output/wine/bin/wine64" ]; then
             echo "Including Wine binary..."
-            cp build/wine64 Payload/Winkor.app/wine64
+            cp build/output/wine/bin/wine64 Payload/Winkor.app/wine64
             chmod 755 Payload/Winkor.app/wine64
+            echo "Wine size: $(ls -lh Payload/Winkor.app/wine64 | awk '{print $5}')"
+          fi
+          
+          # Include Box64 libraries if they exist
+          if [ -d "build/output/box64/lib" ]; then
+            echo "Including Box64 libraries..."
+            mkdir -p Payload/Winkor.app/lib
+            cp -R build/output/box64/lib/* Payload/Winkor.app/lib/
           fi
           
           # Include Mesa/VirGL/MoltenVK if built
