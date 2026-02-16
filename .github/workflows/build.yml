@@ -1,0 +1,150 @@
+name: Build Winkor IPA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.4'
+
+      - name: Show Build Environment
+        run: |
+          echo "=== Winkor Build Environment ==="
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-path
+          xcrun --sdk iphoneos --show-sdk-version
+          sw_vers
+          echo "=== Architecture: arm64 (iOS) ==="
+
+      - name: Compile Metal Shaders
+        run: |
+          echo "=== Compiling Metal Shaders ==="
+          mkdir -p build
+          xcrun -sdk iphoneos metal \
+            -c WinkorApp/Graphics/Shaders.metal \
+            -o build/Shaders.air
+          xcrun -sdk iphoneos metallib \
+            build/Shaders.air \
+            -o build/default.metallib
+          echo "Metal shaders compiled successfully"
+
+      - name: Compile Winkor Binary
+        run: |
+          echo "=== Compiling Winkor for iOS ARM64 ==="
+          mkdir -p build/Release-iphoneos
+
+          # Collect all Swift source files
+          SWIFT_FILES=$(find WinkorApp -name "*.swift" | tr '\n' ' ')
+          echo "Swift files: $SWIFT_FILES"
+
+          swiftc \
+            -o build/Release-iphoneos/Winkor \
+            -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
+            -target arm64-apple-ios16.0 \
+            -O \
+            -framework Foundation \
+            -framework UIKit \
+            -framework SwiftUI \
+            -framework MetalKit \
+            -framework Metal \
+            -framework CoreGraphics \
+            -framework CoreImage \
+            -framework UniformTypeIdentifiers \
+            -framework MobileCoreServices \
+            $SWIFT_FILES
+
+          echo "Binary compiled successfully"
+          file build/Release-iphoneos/Winkor
+
+      - name: Create IPA Package
+        run: |
+          echo "=== Packaging Winkor.ipa ==="
+          
+          # Create .app bundle structure
+          mkdir -p Payload/Winkor.app
+          
+          # Copy binary
+          cp build/Release-iphoneos/Winkor Payload/Winkor.app/Winkor
+          chmod 755 Payload/Winkor.app/Winkor
+          
+          # Copy Metal shaders
+          cp build/default.metallib Payload/Winkor.app/default.metallib
+          
+          # Copy Info.plist
+          cp WinkorApp/Info.plist Payload/Winkor.app/Info.plist
+          
+          # Create PkgInfo
+          echo -n "APPL????" > Payload/Winkor.app/PkgInfo
+          
+          # Create entitlements for JIT support
+          cat > Payload/Winkor.app/Winkor.entitlements << 'ENTITLEMENTS'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>com.apple.security.cs.allow-jit</key>
+              <true/>
+              <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+              <true/>
+              <key>dynamic-codesigning</key>
+              <true/>
+              <key>com.apple.private.security.no-sandbox</key>
+              <true/>
+          </dict>
+          </plist>
+          ENTITLEMENTS
+          
+          # Create the IPA (zip of Payload/)
+          zip -qry Winkor.ipa Payload
+          
+          echo "=== IPA created: Winkor.ipa ==="
+          ls -la Winkor.ipa
+          echo ""
+          echo "Contents:"
+          unzip -l Winkor.ipa
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Winkor-IPA
+          path: Winkor.ipa
+          retention-days: 90
+
+      - name: Upload Debug Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: Winkor-Binary
+          path: build/Release-iphoneos/Winkor
+          retention-days: 30
+
+      - name: Build Summary
+        run: |
+          echo "╔══════════════════════════════════════════╗"
+          echo "║       Winkor Build Complete!             ║"
+          echo "╚══════════════════════════════════════════╝"
+          echo ""
+          echo "Artifact: Winkor-IPA"
+          echo "File: Winkor.ipa"
+          echo ""
+          echo "To install:"
+          echo "  1. Download the Winkor-IPA artifact"
+          echo "  2. Sideload with AltStore, SideStore, or TrollStore"
+          echo "  3. Enable JIT with SideJITServer for full speed"
+          echo ""
+          echo "Architecture: ARM64 (iOS 16+)"
+          echo "Graphics: Metal + DXVK + VirGL + MoltenVK"
+          echo "Emulation: Box64 (x86-64 → ARM64)"
+          echo "Windows API: Wine"

@@ -1,0 +1,39 @@
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+*.xcuserstate
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Build
+build/
+Payload/
+*.air
+*.metallib
+
+# Dependencies
+Pods/
+Carthage/
+.build/
+
+# macOS
+.DS_Store
+*.swp
+*~
+.Trashes
+._*
+
+# IDE
+.idea/
+*.code-workspace
+.vscode/
+
+# Archives
+*.tar.gz
+*.tar.xz
+*.tar.zst
+*.zip
