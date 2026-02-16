@@ -1,6 +1,10 @@
 import Foundation
 import MachO
 
+// C function declarations not bridged by default
+@_silgen_name("sys_icache_invalidate")
+func sys_icache_invalidate(_ start: UnsafeMutableRawPointer, _ size: Int)
+
 // JIT Manager: Handles JIT (Just-In-Time) compilation permissions on iOS
 // JIT is REQUIRED for Box64 dynarec to work - without it, everything runs in interpreter mode (very slow)
 // Methods to enable JIT:
@@ -73,9 +77,9 @@ class JITManager: ObservableObject {
         if jitPtr != MAP_FAILED {
             // MAP_JIT succeeded — JIT is available
             // Try writing a NOP instruction and executing
-            pthread_jit_write_protect_np(false)
+            pthread_jit_write_protect_np(0) // 0 = writable
             jitPtr!.storeBytes(of: UInt32(0xD65F03C0), as: UInt32.self) // ARM64 RET
-            pthread_jit_write_protect_np(true)
+            pthread_jit_write_protect_np(1) // 1 = executable
             sys_icache_invalidate(jitPtr!, pageSize)
             munmap(jitPtr, pageSize)
             return true
