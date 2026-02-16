@@ -495,9 +495,9 @@ struct DesktopView: View {
                 for dll in dllFiles {
                     if dll.hasSuffix(".dll") && (commonDLLs.contains(dll) || dll.hasPrefix(URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent)) {
                         let srcPath = (exeDir as NSString).appendingPathComponent(dll)
-                        let dstPath = driveC.appendingPathComponent("Windows/System32/").appendingPathComponent(dll)
+                        let dstURL = driveC.appendingPathComponent("Windows/System32/").appendingPathComponent(dll)
                         do {
-                            try FileManager.default.copyItem(atPath: srcPath, toPath: dstPath)
+                            try FileManager.default.copyItem(atPath: srcPath, toPath: dstURL.path)
                             consoleOutput.append("[Winkor] Copied DLL: \(dll)")
                         } catch {
                             consoleOutput.append("[Warning] Failed to copy DLL \(dll): \(error.localizedDescription)")
