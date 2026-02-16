@@ -82,48 +82,30 @@ jobs:
             echo "Using swiftc fallback compilation..."
             
             # Create Info.plist for iOS app
-            cat > build/Release-iphoneos/Winkor.app/Info.plist << 'EOF'
-            <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-            <dict>
-                <key>CFBundleDisplayName</key>
-                <string>Winkor</string>
-                <key>CFBundleExecutable</key>
-                <string>Winkor</string>
-                <key>CFBundleIdentifier</key>
-                <string>com.winkor.app</string>
-                <key>CFBundleInfoDictionaryVersion</key>
-                <string>6.0</string>
-                <key>CFBundleName</key>
-                <string>Winkor</string>
-                <key>CFBundlePackageType</key>
-                <string>APPL</string>
-                <key>CFBundleShortVersionString</key>
-                <string>1.0</string>
-                <key>CFBundleVersion</key>
-                <string>1</string>
-                <key>LSRequiresIPhoneOS</key>
-                <true/>
-                <key>MinimumOSVersion</key>
-                <string>16.0</string>
-                <key>UILaunchScreen</key>
-                <dict/>
-                <key>UIRequiredDeviceCapabilities</key>
-                <array>
-                    <string>armv7</string>
-                </array>
-                <key>UISupportedInterfaceOrientations</key>
-                <array>
-                    <string>UIInterfaceOrientationPortrait</string>
-                    <string>UIInterfaceOrientationLandscapeLeft</string>
-                    <string>UIInterfaceOrientationLandscapeRight</string>
-                </array>
-                <key>UIStatusBarStyle</key>
-                <string>UIStatusBarStyleDefault</string>
-            </dict>
-            </plist>
-            EOF
+            echo '<?xml version="1.0" encoding="UTF-8"?>' > build/Release-iphoneos/Winkor.app/Info.plist
+            echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '<plist version="1.0">' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '<dict>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>CFBundleDisplayName</key><string>Winkor</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>CFBundleExecutable</key><string>Winkor</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>CFBundleIdentifier</key><string>com.winkor.app</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>CFBundleName</key><string>Winkor</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>CFBundlePackageType</key><string>APPL</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>CFBundleShortVersionString</key><string>1.0</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>CFBundleVersion</key><string>1</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>LSRequiresIPhoneOS</key><true/>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>MinimumOSVersion</key><string>16.0</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>UILaunchScreen</key><dict/>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>UIRequiredDeviceCapabilities</key><array><string>armv7</string></array>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>UISupportedInterfaceOrientations</key><array>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '        <string>UIInterfaceOrientationPortrait</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '        <string>UIInterfaceOrientationLandscapeLeft</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '        <string>UIInterfaceOrientationLandscapeRight</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    </array>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '    <key>UIStatusBarStyle</key><string>UIStatusBarStyleDefault</string>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '</dict>' >> build/Release-iphoneos/Winkor.app/Info.plist
+            echo '</plist>' >> build/Release-iphoneos/Winkor.app/Info.plist
             
             # Compile Swift files
             swiftc \
