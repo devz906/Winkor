@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 // Home View: Main container list - like Winlator's home screen
 // Shows all Wine containers, lets user create/edit/run them
