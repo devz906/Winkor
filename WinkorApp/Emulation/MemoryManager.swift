@@ -18,7 +18,7 @@ class VirtualMemoryManager {
         static let read     = MemoryProtection(rawValue: 1 << 0)
         static let write    = MemoryProtection(rawValue: 1 << 1)
         static let execute  = MemoryProtection(rawValue: 1 << 2)
-        static let noAccess = MemoryProtection(rawValue: 0)
+        static let noAccess: MemoryProtection = []
         static let readWrite: MemoryProtection = [.read, .write]
         static let readExecute: MemoryProtection = [.read, .execute]
         static let readWriteExecute: MemoryProtection = [.read, .write, .execute]

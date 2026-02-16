@@ -8,7 +8,7 @@ import UIKit
 //   DirectX → DXVK → Vulkan → MoltenVK → Metal → GPU
 //   OpenGL → VirGL → Metal → GPU
 
-class MetalRenderer: NSObject, MTKViewDelegate {
+class MetalRenderer: NSObject, MTKViewDelegate, ObservableObject {
     
     private var device: MTLDevice
     private var commandQueue: MTLCommandQueue

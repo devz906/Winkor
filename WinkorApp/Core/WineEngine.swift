@@ -221,7 +221,7 @@ class WineEngine {
             posix_spawn_file_actions_addclose(&fileActions, stderrPipe[0])
             
             // Convert environment to C strings
-            var envStrings = environment.map { "\($0.key)=\($0.value)" }
+            let envStrings = environment.map { "\($0.key)=\($0.value)" }
             let envp: [UnsafeMutablePointer<CChar>?] = envStrings.map { strdup($0) } + [nil]
             let argvp: [UnsafeMutablePointer<CChar>?] = argv.map { strdup($0) } + [nil]
             
@@ -256,7 +256,7 @@ class WineEngine {
             self.spawnedPID = pid
             let processID = Int(pid)
             
-            var process = WineProcess(
+            let process = WineProcess(
                 pid: processID,
                 name: processName,
                 exePath: exePath,
