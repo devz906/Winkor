@@ -17,6 +17,8 @@ struct CreateContainerView: View {
     @State private var box64Preset = "Default"
     @State private var isCreating = false
     @State private var showAdvanced = false
+    @State private var errorMessage = ""
+    @State private var showError = false
     
     let windowsVersions = ["Windows 11", "Windows 10", "Windows 8.1", "Windows 7", "Windows XP"]
     let graphicsDrivers = ["Turnip (Vulkan)", "VirGL (OpenGL)", "Vulkan (MoltenVK)", "WineD3D (Software)"]
@@ -144,6 +146,11 @@ struct CreateContainerView: View {
                 }
             }
         }
+        .alert("Container Creation Failed", isPresented: $showError) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
     }
     
     private var pipelineDescription: String {
@@ -184,6 +191,9 @@ struct CreateContainerView: View {
                 if success {
                     appState.loadContainers()
                     presentationMode.wrappedValue.dismiss()
+                } else {
+                    errorMessage = "Failed to create container. Check the console for details."
+                    showError = true
                 }
             }
         }

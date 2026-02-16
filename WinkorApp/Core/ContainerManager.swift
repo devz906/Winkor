@@ -76,8 +76,15 @@ class ContainerManager {
     func createContainer(_ container: WineContainer) -> Bool {
         let containerPath = containersDirectory.appendingPathComponent(container.id.uuidString)
         
+        print("[ContainerManager] Creating container: \(container.name)")
+        print("[ContainerManager] Path: \(containerPath.path)")
+        print("[ContainerManager] Graphics: \(container.graphicsDriver)")
+        print("[ContainerManager] DX Wrapper: \(container.dxwrapperVersion)")
+        print("[ContainerManager] Windows: \(container.windowsVersion)")
+        
         do {
             // Create Wine prefix directory structure
+            print("[ContainerManager] Creating directory structure...")
             let paths = [
                 "prefix",
                 "prefix/drive_c",
@@ -104,20 +111,22 @@ class ContainerManager {
             ]
             
             for path in paths {
-                try fileManager.createDirectory(
-                    at: containerPath.appendingPathComponent(path),
-                    withIntermediateDirectories: true
-                )
+                let fullPath = containerPath.appendingPathComponent(path)
+                try fileManager.createDirectory(at: fullPath, withIntermediateDirectories: true)
+                print("[ContainerManager] Created: \(path)")
             }
             
             // Write container configuration
+            print("[ContainerManager] Writing configuration...")
             let configData = try JSONEncoder().encode(container)
             try configData.write(to: containerPath.appendingPathComponent("config/container.json"))
             
             // Write Wine registry stubs
+            print("[ContainerManager] Writing registry files...")
             writeRegistryFiles(to: containerPath.appendingPathComponent("prefix"), container: container)
             
             // Write DLL stubs
+            print("[ContainerManager] Writing DLL stubs...")
             writeDLLStubs(to: containerPath.appendingPathComponent("prefix/drive_c/Windows/System32"))
             
             // Save to container list
