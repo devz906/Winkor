@@ -41,24 +41,14 @@ jobs:
             -o build/default.metallib
           echo "Metal shaders compiled successfully"
 
-      - name: Build Box64 and Wine (if scripts exist)
+      - name: Build Binaries
         run: |
-          echo "=== Building Box64 and Wine ==="
-          echo "Using custom iOS headers for real Box64 compilation"
-          
-          # Build simple working versions
-          if [ -f "Scripts/build-box64-simple.sh" ]; then
-            chmod +x Scripts/build-box64-simple.sh
-            ./Scripts/build-box64-simple.sh || echo "Box64 build failed"
+          echo "=== Building Binaries ==="
+          if [ -f "Scripts/build-simple.sh" ]; then
+            chmod +x Scripts/build-simple.sh
+            ./Scripts/build-simple.sh
           else
-            echo "Box64 build script not found"
-          fi
-          
-          if [ -f "Scripts/build-wine-simple.sh" ]; then
-            chmod +x Scripts/build-wine-simple.sh
-            ./Scripts/build-wine-simple.sh || echo "Wine build failed"
-          else
-            echo "Wine build script not found"
+            echo "Build script not found"
           fi
 
       - name: Compile Winkor App Bundle

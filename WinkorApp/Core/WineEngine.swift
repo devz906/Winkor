@@ -190,22 +190,14 @@ class WineEngine {
             pipe(&stdoutPipe)
             pipe(&stderrPipe)
             
-            // Build argv: box64 wine64 exePath [args...]
-            let argv: [String]
-            if box64Exists && wineExists {
-                argv = [box64Path, winePath, exePath] + arguments
-                onOutput("[Winkor] Using C Box64 + Wine binaries")
-            } else if wineExists {
-                argv = [winePath, exePath] + arguments
-                onOutput("[Winkor] Using Wine only (no Box64)")
-            } else {
-                // Neither exists — report error
+            // Simple execution - just run the process
+            let argv: [String] = [exePath] + arguments
+            onOutput("[Winkor] Launching: \(exePath)")
+            
+            // Check if file exists
+            if !fileManager.fileExists(atPath: exePath) {
                 DispatchQueue.main.async {
-                    onOutput("[Error] Wine binary not found.")
-                    onOutput("[Error] Wine path: \(winePath)")
-                    onOutput("[Error] Box64 path: \(box64Path)")
-                    onOutput("[Winkor] To fix: build Wine using Scripts/build-wine-ios.sh")
-                    onOutput("[Winkor] Or download Wine from Settings → Install Components.")
+                    onOutput("[Error] File not found: \(exePath)")
                     onExit(1)
                 }
                 return
