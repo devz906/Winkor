@@ -476,8 +476,46 @@ struct DesktopView: View {
             }
         }
         
-        processManager.launch(exePath: path, in: container) { message in
-            consoleOutput.append(message)
+        // Copy EXE into container's virtual C: drive first
+        let containerManager = ContainerManager()
+        let driveC = containerManager.driveCPath(for: container)
+        let exeName = (path as NSString).lastPathComponent
+        let containerExePath = driveC.appendingPathComponent(exeName)
+        
+        do {
+            // Copy the EXE to container
+            consoleOutput.append("[Winkor] Copying \(exeName) to container...")
+            try FileManager.default.copyItem(at: URL(fileURLWithPath: path), to: containerExePath)
+            consoleOutput.append("[Winkor] Copied to: \(containerExePath.path)")
+            
+            // Also copy required DLLs if present in same directory
+            let exeDir = (path as NSString).deletingLastPathComponent
+            if let dllFiles = try? FileManager.default.contentsOfDirectory(atPath: exeDir) {
+                let commonDLLs = ["msvcp140.dll", "vcruntime140.dll", "ucrtbase.dll", "d3d9.dll", "d3d11.dll", "dxgi.dll"]
+                for dll in dllFiles {
+                    if dll.hasSuffix(".dll") && (commonDLLs.contains(dll) || dll.hasPrefix(URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent)) {
+                        let srcPath = (exeDir as NSString).appendingPathComponent(dll)
+                        let dstPath = driveC.appendingPathComponent("Windows/System32/").appendingPathComponent(dll)
+                        do {
+                            try FileManager.default.copyItem(atPath: srcPath, toPath: dstPath)
+                            consoleOutput.append("[Winkor] Copied DLL: \(dll)")
+                        } catch {
+                            consoleOutput.append("[Warning] Failed to copy DLL \(dll): \(error.localizedDescription)")
+                        }
+                    }
+                }
+            }
+            
+            // Launch from container path
+            processManager.launch(exePath: containerExePath.path, in: container) { message in
+                consoleOutput.append(message)
+            }
+        } catch {
+            consoleOutput.append("[Error] Failed to copy EXE to container: \(error.localizedDescription)")
+            consoleOutput.append("[Winkor] Falling back to launching from original path...")
+            processManager.launch(exePath: path, in: container) { message in
+                consoleOutput.append(message)
+            }
         }
         showingAppWindow = true
         appWindowMaximized = true
