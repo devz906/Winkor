@@ -1,9 +1,18 @@
 import Foundation
 import MachO
 
+import Darwin.POSIX.dlfcn
+
 // C function declarations not bridged by default
 @_silgen_name("sys_icache_invalidate")
 func sys_icache_invalidate(_ start: UnsafeMutableRawPointer, _ size: Int)
+
+// pthread_jit_write_protect_np is marked unavailable in iOS SDK but exists at runtime
+private let _pthread_jit_write_protect: (@convention(c) (Int32) -> Void)? = {
+    guard let handle = dlopen(nil, RTLD_NOW) else { return nil }
+    guard let sym = dlsym(handle, "pthread_jit_write_protect_np") else { return nil }
+    return unsafeBitCast(sym, to: (@convention(c) (Int32) -> Void).self)
+}()
 
 // JIT Manager: Handles JIT (Just-In-Time) compilation permissions on iOS
 // JIT is REQUIRED for Box64 dynarec to work - without it, everything runs in interpreter mode (very slow)
@@ -77,9 +86,9 @@ class JITManager: ObservableObject {
         if jitPtr != MAP_FAILED {
             // MAP_JIT succeeded — JIT is available
             // Try writing a NOP instruction and executing
-            pthread_jit_write_protect_np(0) // 0 = writable
+            _pthread_jit_write_protect?(0) // 0 = writable
             jitPtr!.storeBytes(of: UInt32(0xD65F03C0), as: UInt32.self) // ARM64 RET
-            pthread_jit_write_protect_np(1) // 1 = executable
+            _pthread_jit_write_protect?(1) // 1 = executable
             sys_icache_invalidate(jitPtr!, pageSize)
             munmap(jitPtr, pageSize)
             return true
