@@ -211,9 +211,10 @@ class MetalRenderer: NSObject, MTKViewDelegate, ObservableObject {
         
         // If we have a framebuffer from Wine/DXVK, render it
         if let framebuffer = framebufferTexture {
-            guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else { return }
+            guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor),
+                  let pipeline = pipelineState else { return }
             
-            encoder.setRenderPipelineState(pipelineState)
+            encoder.setRenderPipelineState(pipeline)
             encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
             encoder.setFragmentTexture(framebuffer, index: 0)
             
