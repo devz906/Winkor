@@ -278,7 +278,7 @@ class WineEngine {
             // Wait for process to exit
             var status: Int32 = 0
             waitpid(pid, &status, 0)
-            let exitCode = Int(WEXITSTATUS(status))
+            let exitCode = Int((status >> 8) & 0x000000ff)
             
             DispatchQueue.main.async {
                 if let idx = self.activeProcesses.firstIndex(where: { $0.pid == processID }) {
@@ -341,7 +341,7 @@ class WineEngine {
     ) {
         let processID = Int.random(in: 1000...9999)
         
-        var process = WineProcess(
+        let process = WineProcess(
             pid: processID,
             name: processName,
             exePath: processName,
@@ -372,7 +372,7 @@ class WineEngine {
                 "[Box64] JIT cache warming up..."
             ]
             
-            for (i, step) in steps.enumerated() {
+            for (_, step) in steps.enumerated() {
                 DispatchQueue.main.async {
                     onOutput(step)
                 }
