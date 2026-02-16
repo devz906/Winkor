@@ -46,16 +46,17 @@ jobs:
           echo "=== Building Box64 and Wine ==="
           echo "Using custom iOS headers for real Box64 compilation"
           
-          if [ -f "Scripts/build-box64.sh" ]; then
-            chmod +x Scripts/build-box64.sh
-            ./Scripts/build-box64.sh || echo "Box64 C build failed, using Swift stub"
+          # Build simple working versions
+          if [ -f "Scripts/build-box64-simple.sh" ]; then
+            chmod +x Scripts/build-box64-simple.sh
+            ./Scripts/build-box64-simple.sh || echo "Box64 build failed"
           else
             echo "Box64 build script not found"
           fi
           
-          if [ -f "Scripts/build-wine-ios.sh" ]; then
-            chmod +x Scripts/build-wine-ios.sh
-            ./Scripts/build-wine-ios.sh || echo "Wine C build failed"
+          if [ -f "Scripts/build-wine-simple.sh" ]; then
+            chmod +x Scripts/build-wine-simple.sh
+            ./Scripts/build-wine-simple.sh || echo "Wine build failed"
           else
             echo "Wine build script not found"
           fi
