@@ -205,8 +205,7 @@ class MetalRenderer: NSObject, MTKViewDelegate, ObservableObject {
     
     func draw(in view: MTKView) {
         guard let drawable = view.currentDrawable,
-              let descriptor = view.currentRenderPassDescriptor,
-              let pipelineState = pipelineState else { return }
+              let descriptor = view.currentRenderPassDescriptor else { return }
         
         guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
         
@@ -230,10 +229,11 @@ class MetalRenderer: NSObject, MTKViewDelegate, ObservableObject {
             encoder.endEncoding()
         } else {
             // No framebuffer - render a test pattern to show Metal is working
-            guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor),
-                  let pipeline = pipelineState else { return }
+            guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else { return }
             
-            encoder.setRenderPipelineState(pipeline)
+            // Create a simple pipeline for test pattern
+            if let testPipeline = createTestPipeline() {
+                encoder.setRenderPipelineState(testPipeline)
             encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
             
             // Create a simple test pattern texture
@@ -249,6 +249,7 @@ class MetalRenderer: NSObject, MTKViewDelegate, ObservableObject {
             
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
             encoder.endEncoding()
+            }
         }
         
         commandBuffer.present(drawable)
@@ -309,6 +310,23 @@ class MetalRenderer: NSObject, MTKViewDelegate, ObservableObject {
         }
         
         return texture
+    }
+    
+    private func createTestPipeline() -> MTLRenderPipelineState? {
+        let vertexFunction = device.makeDefaultLibrary()?.makeFunction(name: "vertexShader")
+        let fragmentFunction = device.makeDefaultLibrary()?.makeFunction(name: "fragmentShader")
+        
+        let pipelineDescriptor = MTLRenderPipelineDescriptor()
+        pipelineDescriptor.vertexFunction = vertexFunction
+        pipelineDescriptor.fragmentFunction = fragmentFunction
+        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+        
+        do {
+            return try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+        } catch {
+            print("[MetalRenderer] Failed to create test pipeline: \(error)")
+            return nil
+        }
     }
     
     // MARK: - Public
