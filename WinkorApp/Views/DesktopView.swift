@@ -20,46 +20,43 @@ struct DesktopView: View {
     @State private var peInfo = ""
     
     var body: some View {
-        ZStack {
-            // Background - Metal rendering surface (in production, MTKView goes here)
-            Color.black
-                .ignoresSafeArea()
+        VStack(spacing: 0) {
+            // Top bar with controls
+            topBar
             
-            // Windows Desktop simulation
-            VStack(spacing: 0) {
-                // Top bar with controls
-                topBar
+            // Main display area
+            ZStack {
+                // Desktop background
+                LinearGradient(
+                    colors: [Color(red: 0, green: 0.47, blue: 0.84),
+                            Color(red: 0, green: 0.28, blue: 0.63)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea(edges: .bottom)
                 
-                // Main display area
-                ZStack {
-                    // Desktop background
-                    LinearGradient(
-                        colors: [Color(red: 0, green: 0.47, blue: 0.84),
-                                Color(red: 0, green: 0.28, blue: 0.63)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    
-                    if processManager.isRunning {
-                        // Show console/app output
-                        if showingConsole {
-                            consoleView
-                        }
-                    } else {
-                        // Desktop icons
-                        desktopIcons
-                    }
-                    
-                    // On-screen gamepad controls
-                    if showingOnScreenControls && processManager.isRunning {
-                        onScreenControls
+                // Desktop icons always visible
+                desktopIcons
+                
+                // Console overlay when running
+                if processManager.isRunning && showingConsole {
+                    VStack {
+                        Spacer()
+                        consoleView
                     }
                 }
                 
-                // Taskbar
-                taskbar
+                // On-screen gamepad controls
+                if showingOnScreenControls && processManager.isRunning {
+                    onScreenControls
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            
+            // Taskbar
+            taskbar
         }
+        .background(Color.black)
         .onAppear {
             if let exe = exePath {
                 launchEXE(exe.path)
@@ -213,8 +210,9 @@ struct DesktopView: View {
             .background(Color.black.opacity(0.9))
         }
         .cornerRadius(8)
-        .padding()
-        .frame(maxHeight: 300)
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+        .frame(maxHeight: UIScreen.main.bounds.height * 0.45)
     }
     
     private func lineColor(for line: String) -> Color {

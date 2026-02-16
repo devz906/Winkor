@@ -6,7 +6,7 @@ import SwiftUI
 
 struct DriverManagerView: View {
     @EnvironmentObject var appState: AppState
-    @StateObject private var driverManager = DriverManager()
+    // Use appState.driverManager so state persists across views
     @State private var selectedCategory: GraphicsDriver.DriverCategory?
     @State private var showingAlert = false
     @State private var alertMessage = ""
@@ -24,7 +24,7 @@ struct DriverManagerView: View {
                     // Component sections
                     ForEach(GraphicsDriver.DriverCategory.allCases, id: \.self) { category in
                         if selectedCategory == nil || selectedCategory == category {
-                            let drivers = driverManager.getDriversByCategory(category)
+                            let drivers = appState.driverManager.getDriversByCategory(category)
                             if !drivers.isEmpty {
                                 driverSection(category: category, drivers: drivers)
                             }
@@ -57,8 +57,8 @@ struct DriverManagerView: View {
                         .font(.title3)
                         .fontWeight(.bold)
                     
-                    let installed = driverManager.getInstalledDrivers().count
-                    let total = driverManager.availableDrivers.count
+                    let installed = appState.driverManager.getInstalledDrivers().count
+                    let total = appState.driverManager.availableDrivers.count
                     Text("\(installed)/\(total) installed")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -70,7 +70,7 @@ struct DriverManagerView: View {
                     Text("Disk Usage")
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                    Text("\(driverManager.getTotalInstalledSize()) MB")
+                    Text("\(appState.driverManager.getTotalInstalledSize()) MB")
                         .font(.headline)
                         .foregroundColor(.orange)
                     Text("Free: \(FileSystemManager.shared.getAvailableDiskSpace())")
@@ -80,7 +80,7 @@ struct DriverManagerView: View {
             }
             
             // Required components check
-            let required = driverManager.availableDrivers.filter { $0.isRequired }
+            let required = appState.driverManager.availableDrivers.filter { $0.isRequired }
             let missingRequired = required.filter { !$0.isInstalled }
             
             if !missingRequired.isEmpty {
@@ -167,16 +167,16 @@ struct DriverManagerView: View {
             ForEach(drivers) { driver in
                 DriverCard(
                     driver: driver,
-                    downloadProgress: driverManager.downloadProgress[driver.id],
+                    downloadProgress: appState.driverManager.downloadProgress[driver.id],
                     onDownload: {
-                        driverManager.downloadDriver(driver) { success, message in
+                        appState.driverManager.downloadDriver(driver) { success, message in
                             alertMessage = message
                             showingAlert = true
                             appState.checkInstalledComponents()
                         }
                     },
                     onUninstall: {
-                        driverManager.uninstallDriver(driver)
+                        appState.driverManager.uninstallDriver(driver)
                         appState.checkInstalledComponents()
                     }
                 )
@@ -226,9 +226,9 @@ struct DriverManagerView: View {
     // MARK: - Helpers
     
     private func installAllRequired() {
-        let missing = driverManager.availableDrivers.filter { $0.isRequired && !$0.isInstalled }
+        let missing = appState.driverManager.availableDrivers.filter { $0.isRequired && !$0.isInstalled }
         for driver in missing {
-            driverManager.downloadDriver(driver) { success, message in
+            appState.driverManager.downloadDriver(driver) { success, message in
                 print("[DriverManager] \(message)")
                 appState.checkInstalledComponents()
             }

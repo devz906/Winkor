@@ -57,44 +57,64 @@ class JITManager: ObservableObject {
     }
     
     private func testJITCapability() -> Bool {
-        // Test if we can allocate and execute memory with RWX permissions
-        // This is the definitive test for JIT capability on iOS
-        
+        // Test 1: Try MAP_JIT with RW, then toggle to RX using pthread_jit_write_protect_np
+        // This is the modern iOS way (iOS 14+)
         let pageSize = Int(getpagesize())
         
-        // Try to allocate RWX memory
-        let ptr = mmap(
+        let jitPtr = mmap(
             nil,
             pageSize,
-            PROT_READ | PROT_WRITE | PROT_EXEC,
-            MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT,
+            PROT_READ | PROT_WRITE,
+            MAP_PRIVATE | MAP_ANON | MAP_JIT,
             -1,
             0
         )
         
-        if ptr == MAP_FAILED {
-            // RWX allocation failed - try RW then toggle to RX
-            let rwPtr = mmap(
-                nil,
-                pageSize,
-                PROT_READ | PROT_WRITE,
-                MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT,
-                -1,
-                0
-            )
-            
-            if rwPtr == MAP_FAILED {
-                return false
-            }
-            
-            // Try to make it executable
-            let result = mprotect(rwPtr, pageSize, PROT_READ | PROT_EXEC)
-            munmap(rwPtr, pageSize)
-            return result == 0
+        if jitPtr != MAP_FAILED {
+            // MAP_JIT succeeded — JIT is available
+            // Try writing a NOP instruction and executing
+            pthread_jit_write_protect_np(false)
+            jitPtr!.storeBytes(of: UInt32(0xD65F03C0), as: UInt32.self) // ARM64 RET
+            pthread_jit_write_protect_np(true)
+            sys_icache_invalidate(jitPtr!, pageSize)
+            munmap(jitPtr, pageSize)
+            return true
         }
         
-        munmap(ptr, pageSize)
-        return true
+        // Test 2: Try RWX directly (older method, works with debugger-attached JIT)
+        let rwxPtr = mmap(
+            nil,
+            pageSize,
+            PROT_READ | PROT_WRITE | PROT_EXEC,
+            MAP_PRIVATE | MAP_ANON,
+            -1,
+            0
+        )
+        
+        if rwxPtr != MAP_FAILED {
+            munmap(rwxPtr, pageSize)
+            return true
+        }
+        
+        // Test 3: RW then mprotect to RX
+        let rwPtr = mmap(
+            nil,
+            pageSize,
+            PROT_READ | PROT_WRITE,
+            MAP_PRIVATE | MAP_ANON,
+            -1,
+            0
+        )
+        
+        if rwPtr != MAP_FAILED {
+            let result = mprotect(rwPtr, pageSize, PROT_READ | PROT_EXEC)
+            munmap(rwPtr, pageSize)
+            if result == 0 {
+                return true
+            }
+        }
+        
+        return false
     }
     
     // MARK: - JIT Enable Methods
@@ -110,87 +130,125 @@ class JITManager: ObservableObject {
         case .debuggerAttach:
             enableViaDebugger(completion: completion)
         case .entitlement:
-            checkEntitlement(completion: completion)
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                self?.checkEntitlement(completion: completion)
+            }
         case .altJIT:
             enableViaAltJIT(completion: completion)
         }
     }
     
     private func enableViaSideJITServer(completion: @escaping (Bool, String) -> Void) {
-        // SideJITServer works by:
-        // 1. Running a companion app on a PC on the same network
-        // 2. The companion attaches a debugger to the iOS app
-        // 3. This grants JIT permissions
-        // 4. The debugger detaches, leaving JIT enabled
-        
-        // Check if SideJITServer is reachable on local network
-        // Default port: 8080
-        
-        let hosts = ["192.168.1.1", "192.168.0.1", "10.0.0.1"]
-        
-        for host in hosts {
-            if let url = URL(string: "http://\(host):8080/status") {
+        // Run entirely off the main thread to avoid UI freeze
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let hosts = ["192.168.1.1", "192.168.0.1", "10.0.0.1",
+                         "192.168.1.100", "192.168.0.100", "172.16.0.1"]
+            
+            let group = DispatchGroup()
+            var foundHost: String?
+            let lock = NSLock()
+            
+            for host in hosts {
+                guard let url = URL(string: "http://\(host):8080/status") else { continue }
+                group.enter()
                 var request = URLRequest(url: url, timeoutInterval: 2)
                 request.httpMethod = "GET"
                 
-                let semaphore = DispatchSemaphore(value: 0)
-                var found = false
-                
-                URLSession.shared.dataTask(with: request) { data, response, error in
-                    if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                        found = true
+                URLSession.shared.dataTask(with: request) { _, response, _ in
+                    if let http = response as? HTTPURLResponse, http.statusCode == 200 {
+                        lock.lock()
+                        if foundHost == nil { foundHost = host }
+                        lock.unlock()
                     }
-                    semaphore.signal()
+                    group.leave()
                 }.resume()
+            }
+            
+            group.wait()
+            
+            if let host = foundHost {
+                let bundleID = Bundle.main.bundleIdentifier ?? "com.winkor.emulator"
+                guard let enableURL = URL(string: "http://\(host):8080/enable-jit/\(bundleID)") else {
+                    DispatchQueue.main.async { completion(false, "Invalid SideJITServer URL") }
+                    return
+                }
                 
-                semaphore.wait()
-                
-                if found {
-                    // Request JIT enable
-                    let bundleID = Bundle.main.bundleIdentifier ?? "com.winkor.emulator"
-                    if let enableURL = URL(string: "http://\(host):8080/enable-jit/\(bundleID)") {
-                        URLSession.shared.dataTask(with: enableURL) { [weak self] _, response, error in
-                            DispatchQueue.main.async {
-                                if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                                    self?.isJITEnabled = true
-                                    self?.status = .enabled
-                                    completion(true, "JIT enabled via SideJITServer at \(host)")
-                                } else {
-                                    completion(false, "SideJITServer found but JIT enable failed")
-                                }
-                            }
-                        }.resume()
-                        return
+                URLSession.shared.dataTask(with: enableURL) { [weak self] _, response, _ in
+                    DispatchQueue.main.async {
+                        if let http = response as? HTTPURLResponse, http.statusCode == 200 {
+                            self?.isJITEnabled = true
+                            self?.status = .enabled
+                            completion(true, "JIT enabled via SideJITServer at \(host)")
+                        } else {
+                            completion(false, "SideJITServer found at \(host) but JIT enable failed")
+                        }
                     }
+                }.resume()
+            } else {
+                DispatchQueue.main.async {
+                    completion(false, "SideJITServer not found on local network. Make sure it's running on your PC and both devices are on the same WiFi.")
                 }
             }
         }
-        
-        completion(false, "SideJITServer not found on local network. Make sure it's running on your PC.")
     }
     
     private func enableViaJITStreamer(completion: @escaping (Bool, String) -> Void) {
-        completion(false, "JITStreamer requires the JITStreamer shortcut. Install it from the JITStreamer GitHub page.")
+        // Re-check JIT after user may have used the shortcut
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let available = self?.testJITCapability() ?? false
+            DispatchQueue.main.async {
+                if available {
+                    self?.isJITEnabled = true
+                    self?.status = .enabled
+                    completion(true, "JIT is now enabled!")
+                } else {
+                    completion(false, "JIT not yet enabled. Run the JITStreamer shortcut first, then tap this again.")
+                }
+            }
+        }
     }
     
     private func enableViaDebugger(completion: @escaping (Bool, String) -> Void) {
-        completion(false, "Connect your device to Xcode and run the app from there to get debugger-attached JIT.")
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let available = self?.testJITCapability() ?? false
+            DispatchQueue.main.async {
+                if available {
+                    self?.isJITEnabled = true
+                    self?.status = .enabled
+                    completion(true, "JIT detected via debugger!")
+                } else {
+                    completion(false, "No debugger attached. Connect to Xcode and run the app from there.")
+                }
+            }
+        }
     }
     
     private func checkEntitlement(completion: @escaping (Bool, String) -> Void) {
-        // Check if dynamic-codesigning entitlement is present (jailbreak)
         let jitTest = testJITCapability()
-        if jitTest {
-            isJITEnabled = true
-            status = .enabled
-            completion(true, "JIT available via entitlement")
-        } else {
-            completion(false, "dynamic-codesigning entitlement not present. Requires jailbreak.")
+        DispatchQueue.main.async { [weak self] in
+            if jitTest {
+                self?.isJITEnabled = true
+                self?.status = .enabled
+                completion(true, "JIT available via entitlement")
+            } else {
+                completion(false, "dynamic-codesigning entitlement not present. Requires jailbreak.")
+            }
         }
     }
     
     private func enableViaAltJIT(completion: @escaping (Bool, String) -> Void) {
-        completion(false, "AltJIT requires AltStore with JIT support. Enable JIT from AltStore app.")
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let available = self?.testJITCapability() ?? false
+            DispatchQueue.main.async {
+                if available {
+                    self?.isJITEnabled = true
+                    self?.status = .enabled
+                    completion(true, "JIT is now enabled via AltJIT!")
+                } else {
+                    completion(false, "JIT not enabled yet. Enable JIT from AltStore/SideStore first, then tap again.")
+                }
+            }
+        }
     }
     
     // MARK: - Memory Management for JIT

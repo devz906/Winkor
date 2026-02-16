@@ -37,14 +37,19 @@ class AppState: ObservableObject {
     }
     
     func checkInstalledComponents() {
+        // Reload driver state from disk
+        driverManager.loadAvailableDrivers()
+        
         installedComponents["box64"] = box64Bridge.isInstalled()
         installedComponents["wine"] = wineEngine.isInstalled()
         installedComponents["mesa"] = FileManager.default.fileExists(atPath: driverManager.mesaPath)
         installedComponents["dxvk"] = FileManager.default.fileExists(atPath: driverManager.dxvkPath)
         installedComponents["virgl"] = FileManager.default.fileExists(atPath: driverManager.virglPath)
+        installedComponents["moltenvk"] = driverManager.availableDrivers.first(where: { $0.id == "moltenvk" })?.isInstalled ?? false
         
-        let allReady = installedComponents.values.allSatisfy { $0 }
-        isEngineReady = allReady
+        // Engine is ready if box64 + wine are installed (drivers are optional for basic function)
+        let coreReady = (installedComponents["box64"] == true) && (installedComponents["wine"] == true)
+        isEngineReady = coreReady
     }
 }
 
