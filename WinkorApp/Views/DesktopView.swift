@@ -19,6 +19,8 @@ struct DesktopView: View {
     @State private var selectedEXEForImport: URL?
     @State private var showingOnScreenControls = true
     @State private var peInfo = ""
+    @State private var showingFileImport = false
+    @State private var showingPEInfo = false
     
     var body: some View {
         VStack(spacing: 0) {
